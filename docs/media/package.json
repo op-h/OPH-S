@@ -1,0 +1,7 @@
+{
+  "name": "oph-s-media",
+  "private": true,
+  "description": "Reproducible README media for OPH-S: screenshots, GIFs and clips captured from the UI demo mode",
+  "scripts": { "capture": "node capture.mjs" },
+  "devDependencies": { "puppeteer-core": "23.11.1" }
+}

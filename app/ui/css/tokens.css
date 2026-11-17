@@ -1,0 +1,111 @@
+/* OPH Sentinel design tokens — the ONLY place colours, type and spacing are defined. */
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-style: normal; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; font-style: normal; font-display: swap; src: url("../fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-style: normal; font-display: swap; src: url("../fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-style: normal; font-display: swap; src: url("../fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --c-appbar: #0d0f12;
+  --c-page: #13161a;
+  --c-panel: #1a1e23;
+  --c-raised: #22272d;
+  --c-hover: #1f242a;
+  --c-selected: #262c33;
+  --c-border: #2c3239;
+  --c-border-strong: #3a414a;
+  --c-overlay: rgba(6, 8, 10, 0.72);
+
+  /* Text */
+  --c-text: #e6e9ed;
+  --c-text-2: #a3abb5;
+  --c-text-muted: #6f7882;
+  --c-text-inverse: #0d0f12;
+
+  /* Accent & links */
+  --c-accent: #65a637;
+  --c-accent-hover: #74b843;
+  --c-accent-press: #578f30;
+  --c-accent-soft: rgba(101, 166, 55, 0.14);
+  --c-link: #4fa8e8;
+  --c-focus: #65a637;
+
+  /* Severity (always paired with a text label) */
+  --c-sev-critical: #e5484d;
+  --c-sev-high: #f76808;
+  --c-sev-medium: #f5c518;
+  --c-sev-low: #3e9bff;
+  --c-sev-info: #6f7882;
+  --c-sev-critical-soft: rgba(229, 72, 77, 0.14);
+  --c-sev-high-soft: rgba(247, 104, 8, 0.14);
+  --c-sev-medium-soft: rgba(245, 197, 24, 0.12);
+  --c-sev-low-soft: rgba(62, 155, 255, 0.13);
+  --c-sev-info-soft: rgba(111, 120, 130, 0.16);
+
+  /* Status */
+  --c-ok: #65a637;
+  --c-warn: #f5c518;
+  --c-danger: #e5484d;
+  --c-off: #6f7882;
+
+  /* Syntax (raw JSON) */
+  --c-syn-key: #4fa8e8;
+  --c-syn-str: #9fcf7a;
+  --c-syn-num: #e3a65b;
+  --c-syn-bool: #c39bd3;
+  --c-syn-null: #6f7882;
+  --c-syn-field: #4fa8e8;
+  --c-syn-value: #e6e9ed;
+
+  /* QR codes (must stay dark-on-light for camera scanning) */
+  --c-qr-bg: #ffffff;
+  --c-qr-fg: #0d0f12;
+
+  /* Charts */
+  --c-chart-1: #65a637;
+  --c-chart-2: #e5484d;
+  --c-chart-grid: #2c3239;
+  --c-chart-select: rgba(79, 168, 232, 0.18);
+
+  /* Typography */
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, monospace;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --lh-tight: 1.25;
+  --lh-base: 1.45;
+
+  /* Spacing (4px grid) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Shape */
+  --radius: 2px;
+  --radius-lg: 4px;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* Sizes */
+  --h-appbar: 44px;
+  --h-footer: 28px;
+  --h-row: 28px;
+  --h-control: 28px;
+  --w-drawer: 480px;
+  --w-sidebar: 232px;
+
+  --dur: 120ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}

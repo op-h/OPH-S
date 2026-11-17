@@ -1,0 +1,18 @@
+[package]
+name = "oph-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OPH Sentinel collection agent (Windows / Linux / Android-Termux)"
+
+[[bin]]
+name = "oph-agent"
+path = "src/main.rs"
+
+[dependencies]
+oph-proto = { path = "../oph-proto" }
+serde_json.workspace = true
+tokio.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+sha2.workspace = true

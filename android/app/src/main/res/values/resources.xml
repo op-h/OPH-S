@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OPH-S</string>
+    <!-- OPH tokens (app/ui/css/tokens.css) -->
+    <color name="ic_launcher_background">#1B2026</color>
+    <color name="page">#13161A</color>
+    <style name="Theme.OPHS" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/page</item>
+        <item name="android:statusBarColor">@color/page</item>
+        <item name="android:navigationBarColor">@color/page</item>
+    </style>
+</resources>

@@ -1,0 +1,25 @@
+# build output
+/target/
+/dist/
+node_modules/
+*.exe
+*.msi
+*.apk
+*.aab
+
+# Android local + signing secrets (never commit)
+android/local.properties
+android/keystore/
+*.jks
+*.keystore
+keystore.properties
+
+# editors / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Tauri generated
+app/src-tauri/gen/

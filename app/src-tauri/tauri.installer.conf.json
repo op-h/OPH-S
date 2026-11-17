@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "../../target/release/oph-agent.exe": "oph-agent.exe",
+      "../../dist/OPH-S.apk": "OPH-S.apk"
+    }
+  }
+}

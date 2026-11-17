@@ -1,0 +1,49 @@
+[package]
+name = "oph-sentinel"
+version = "0.2.7"
+edition.workspace = true
+license.workspace = true
+description = "OPH Sentinel — personal SIEM / IDPS"
+
+[[bin]]
+name = "oph-sentinel"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+cc = "1"
+
+[dependencies]
+oph-proto = { path = "../../crates/oph-proto" }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+sha2.workspace = true
+sysinfo.workspace = true
+rusqlite = { version = "0.32", features = ["bundled", "functions"] }
+rcgen = "0.13"
+ureq = "2"
+ring = "0.17"
+hickory-proto = { version = "0.24", default-features = false }
+psl = "2"
+syslog_loose = "0.21"
+# TP-Link Deco local API (RSA PKCS#1 v1.5 + AES-128-CBC envelope)
+rsa = "0.9"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+md-5 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+# file integrity monitoring (ReadDirectoryChangesW on Windows)
+notify = { version = "6", default-features = false }
+# Tranco popular-sites list ships as a zip
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[target.'cfg(windows)'.dependencies]
+ferrisetw = "1"
+netstat2.workspace = true

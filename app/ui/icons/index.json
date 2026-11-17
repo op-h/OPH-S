@@ -1,0 +1,32 @@
+[
+  {
+    "id": "op-shield",
+    "name": "Guardian",
+    "description": "The OP ligature inside a sharp shield: protection first."
+  },
+  {
+    "id": "op-radar",
+    "name": "Radar",
+    "description": "A radar sweep inside the O: always watching the network."
+  },
+  {
+    "id": "op-hex",
+    "name": "Hex Core",
+    "description": "Hexagon cell with the ligature: structured, engineered, SOC style."
+  },
+  {
+    "id": "op-eye",
+    "name": "Sentinel Eye",
+    "description": "The bowl becomes a watchful eye with a green iris."
+  },
+  {
+    "id": "op-bracket",
+    "name": "Terminal",
+    "description": "Console brackets and a cursor: for operators who live in logs."
+  },
+  {
+    "id": "op-orbit",
+    "name": "Orbit",
+    "description": "An orbit with a node circling the ligature: every device, connected."
+  }
+]

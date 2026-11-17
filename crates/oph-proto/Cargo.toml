@@ -1,0 +1,13 @@
+[package]
+name = "oph-proto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sysinfo.workspace = true
+
+[target.'cfg(any(windows, target_os = "linux", target_os = "macos"))'.dependencies]
+netstat2.workspace = true
