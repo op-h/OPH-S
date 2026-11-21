@@ -85,7 +85,7 @@
         const ok = await U.confirmModal({ title: "Permanently delete quarantined files?", confirmLabel: "Purge permanently", danger: true,
           body: html`<p>${num(q.runs.reduce((s, r) => s + r.files, 0))} files (${bytes(q.bytes)}) are deleted for good. <strong>This cannot be undone</strong>, and they do not go to the Recycle Bin.</p>` });
         if (!ok) return;
-        try { const r = await API.cleanerPurge(); U.toast(`Freed ${bytes(r.freed_bytes)}`); doScan(); } catch (e) { U.toast(e.message, "error"); }
+        try { const r = await API.cleanerPurge(); U.toast(r.pending_reboot ? `Freed ${bytes(r.freed_bytes)}. ${r.pending_reboot} protected files will be removed at the next restart.` : `Freed ${bytes(r.freed_bytes)}`, r.failed ? "error" : undefined); doScan(); } catch (e) { U.toast(e.message, "error"); }
       };
     }
 

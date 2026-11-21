@@ -145,6 +145,36 @@ fn all_roots() -> Vec<PathBuf> {
     RULES.iter().flat_map(|r| roots(r.id).0).filter_map(|p| p.canonicalize().ok()).collect()
 }
 
+/// Top-level folders of `root` that contain anything modified within the last 24 hours.
+fn active_dirs(root: &Path, now: i64) -> std::collections::HashSet<PathBuf> {
+    let mut out = std::collections::HashSet::new();
+    let Ok(rd) = std::fs::read_dir(root) else { return out };
+    for top in rd.flatten() {
+        let Ok(m) = std::fs::symlink_metadata(top.path()) else { continue };
+        if !m.is_dir() || is_reparse(&m) {
+            continue;
+        }
+        let mut stack = vec![top.path()];
+        let mut seen = 0usize;
+        'scan: while let Some(d) = stack.pop() {
+            let Ok(rd) = std::fs::read_dir(&d) else { continue };
+            for e in rd.flatten() {
+                seen += 1;
+                let Ok(m) = std::fs::symlink_metadata(e.path()) else { continue };
+                let mt = m.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis() as i64).unwrap_or(0);
+                if now - mt < 86_400_000 || seen > 200_000 {
+                    out.insert(top.path());
+                    break 'scan;
+                }
+                if m.is_dir() && !is_reparse(&m) {
+                    stack.push(e.path());
+                }
+            }
+        }
+    }
+    out
+}
+
 #[cfg(windows)]
 fn is_reparse(m: &std::fs::Metadata) -> bool {
     use std::os::windows::fs::MetadataExt;
@@ -162,6 +192,9 @@ fn walk(rule: &Rule, mut f: impl FnMut(&Path, u64, i64)) {
     let now = now_ms();
     let mut count = 0usize;
     for root in roots {
+        // Temp roots: a top-level folder where anything changed in the last 24 h belongs to a
+        // program that is still using it (app sessions, sandboxes, node_modules) -> skip it whole.
+        let skip: std::collections::HashSet<PathBuf> = if matches!(rule.id, "user_temp" | "windows_temp") { active_dirs(&root, now) } else { Default::default() };
         let mut stack = vec![root];
         while let Some(dir) = stack.pop() {
             let Ok(rd) = std::fs::read_dir(&dir) else { continue };
@@ -171,7 +204,7 @@ fn walk(rule: &Rule, mut f: impl FnMut(&Path, u64, i64)) {
                     continue;
                 }
                 if m.is_dir() {
-                    if filter.is_none() {
+                    if filter.is_none() && !skip.contains(&e.path()) {
                         stack.push(e.path());
                     }
                     continue;
@@ -246,16 +279,35 @@ pub fn scan(qdir: &Path) -> Value {
     })
 }
 
+/// What is really in quarantine: counts and sizes from the files on disk (not from run.json),
+/// so a partly purged run shows exactly what is left.
 pub fn quarantine_info(qdir: &Path) -> Value {
     let mut runs = Vec::new();
     let mut all = 0u64;
     if let Ok(rd) = std::fs::read_dir(qdir) {
         for e in rd.flatten() {
+            if !e.path().is_dir() {
+                continue;
+            }
             let id = e.file_name().to_string_lossy().into_owned();
-            let Ok(meta) = std::fs::read_to_string(e.path().join("run.json")) else { continue };
-            let v: Value = serde_json::from_str(&meta).unwrap_or(Value::Null);
-            all += v["bytes"].as_u64().unwrap_or(0);
-            runs.push(json!({"id": id, "ts": v["ts"], "files": v["files"], "bytes": v["bytes"], "categories": v["categories"]}));
+            let v: Value = std::fs::read_to_string(e.path().join("run.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null);
+            let (mut files, mut bytes) = (0u64, 0u64);
+            if let Ok(fs) = std::fs::read_dir(e.path()) {
+                for f in fs.flatten() {
+                    if f.file_name().to_string_lossy().ends_with(".q") {
+                        files += 1;
+                        bytes += f.metadata().map(|m| m.len()).unwrap_or(0);
+                    }
+                }
+            }
+            if files == 0 {
+                let _ = std::fs::remove_dir_all(e.path()); // nothing left but bookkeeping
+                continue;
+            }
+            all += bytes;
+            let ts = v["ts"].as_i64().or_else(|| id.get(..13).and_then(|x| x.parse().ok()));
+            runs.push(json!({"id": id, "ts": ts, "files": files, "bytes": bytes, "categories": v["categories"],
+                "partial": v["files"].as_u64().map(|n| n != files).unwrap_or(false)}));
         }
     }
     runs.sort_by(|a, b| b["ts"].as_i64().cmp(&a["ts"].as_i64()));
@@ -274,6 +326,13 @@ pub fn run(qdir: &Path, categories: &[String]) -> Value {
         let (mut moved, mut bytes, mut skipped, mut n) = (0u64, 0u64, 0u64, 0u64);
         let mut errors: Vec<String> = Vec::new();
         let mut done_cats = Vec::new();
+        // Programs that are running right now: Windows lets you move their .exe but never delete
+        // it, so quarantining one leaves a file that can't be purged. Skip their whole folder.
+        let running: Vec<PathBuf> = {
+            let mut sys = sysinfo::System::new();
+            sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+            sys.processes().values().filter_map(|p| p.exe().and_then(|e| e.parent()).map(|d| d.to_path_buf())).collect()
+        };
         for r in RULES.iter().filter(|r| categories.iter().any(|c| c == r.id)) {
             let blockers = running_blockers(r);
             if !blockers.is_empty() {
@@ -282,6 +341,10 @@ pub fn run(qdir: &Path, categories: &[String]) -> Value {
             }
             done_cats.push(r.id);
             walk(r, |p, sz, _| {
+                if running.iter().any(|d| p.starts_with(d)) {
+                    skipped += 1;
+                    return;
+                }
                 n += 1;
                 let dest = rdir.join(format!("{n}.q"));
                 let ok = std::fs::rename(p, &dest).is_ok()
@@ -393,8 +456,64 @@ fn nearest_existing(p: &Path) -> Option<PathBuf> {
 }
 
 /// Permanently delete quarantined runs (all, or only those older than 7 days).
-pub fn purge(qdir: &Path, only_expired: bool) -> u64 {
-    let mut freed = 0;
+#[derive(Default, Serialize)]
+pub struct PurgeResult {
+    pub freed_bytes: u64,
+    pub deleted: u64,
+    /// files another program protects (e.g. an AI-tool sandbox filter): removed at next restart
+    pub pending_reboot: u64,
+    pub failed: u64,
+}
+
+/// Delete every file under `dir` one by one (never stop at the first failure).
+/// Read-only flags are cleared; files that still refuse are scheduled for deletion at restart.
+fn delete_tree(dir: &Path, r: &mut PurgeResult) {
+    let mut stack = vec![dir.to_path_buf()];
+    let mut dirs = Vec::new();
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+        dirs.push(d);
+        for e in rd.flatten() {
+            let p = e.path();
+            let Ok(m) = std::fs::symlink_metadata(&p) else { continue };
+            if m.is_dir() && !is_reparse(&m) {
+                stack.push(p);
+                continue;
+            }
+            let size = m.len();
+            let mut ok = std::fs::remove_file(&p).is_ok();
+            if !ok {
+                let mut perm = m.permissions();
+                #[allow(clippy::permissions_set_readonly_false)]
+                perm.set_readonly(false);
+                let _ = std::fs::set_permissions(&p, perm);
+                ok = std::fs::remove_file(&p).is_ok();
+            }
+            if ok {
+                r.deleted += 1;
+                r.freed_bytes += size;
+            } else if crate::native::delete_on_reboot(&p) {
+                // free the space now: emptying the file is allowed even where deleting is blocked
+                if std::fs::OpenOptions::new().write(true).open(&p).and_then(|f| f.set_len(0)).is_ok() {
+                    r.freed_bytes += size;
+                }
+                r.pending_reboot += 1;
+            } else {
+                r.failed += 1;
+            }
+        }
+    }
+    // remove now-empty folders, deepest first; folders with pending files go at restart too
+    for d in dirs.iter().rev() {
+        if std::fs::remove_dir(d).is_err() && r.pending_reboot > 0 {
+            crate::native::delete_on_reboot(d);
+        }
+    }
+}
+
+/// Permanently delete quarantined runs (all, or only those older than 7 days).
+pub fn purge(qdir: &Path, only_expired: bool) -> PurgeResult {
+    let mut r = PurgeResult::default();
     let cutoff = now_ms() - QUARANTINE_DAYS * 86_400_000;
     if let Ok(rd) = std::fs::read_dir(qdir) {
         for e in rd.flatten() {
@@ -402,11 +521,11 @@ pub fn purge(qdir: &Path, only_expired: bool) -> u64 {
             if only_expired && meta["ts"].as_i64().unwrap_or(0) > cutoff {
                 continue;
             }
-            freed += meta["bytes"].as_u64().unwrap_or(0);
-            let _ = std::fs::remove_dir_all(e.path());
+            // runs with pending restart deletions are marked so they stop showing as normal runs
+            delete_tree(&e.path(), &mut r);
         }
     }
-    freed
+    r
 }
 
 pub fn auto_categories() -> Vec<String> {
@@ -465,5 +584,36 @@ mod tests {
         assert!(safe_root(&cache));
         assert!(!safe_root(&docs), "a Documents folder must never be a cleanup root");
         let _ = std::fs::remove_dir_all(base);
+    }
+}
+
+#[cfg(test)]
+mod purge_tests {
+    use super::*;
+
+    #[test]
+    fn purge_removes_readonly_files_and_info_reflects_disk() {
+        let q = std::env::temp_dir().join(format!("oph-purge-test-{}", std::process::id()));
+        let run = q.join("1700000000000001");
+        std::fs::create_dir_all(&run).unwrap();
+        std::fs::write(run.join("run.json"), r#"{"ts":1700000000000,"files":3,"bytes":30}"#).unwrap();
+        for i in 0..3 {
+            std::fs::write(run.join(format!("{i}.q")), b"0123456789").unwrap();
+        }
+        // a read-only file used to stop remove_dir_all and leave the whole run behind
+        let ro = run.join("1.q");
+        let mut p = std::fs::metadata(&ro).unwrap().permissions();
+        p.set_readonly(true);
+        std::fs::set_permissions(&ro, p).unwrap();
+        std::fs::remove_file(run.join("2.q")).unwrap(); // partly purged run: info must count disk, not run.json
+        let info = quarantine_info(&q);
+        assert_eq!(info["runs"][0]["files"], 2);
+        assert_eq!(info["bytes"], 20);
+        let r = purge(&q, false);
+        assert_eq!((r.deleted, r.failed, r.pending_reboot), (3, 0, 0)); // 2 .q files + run.json
+        assert_eq!(r.freed_bytes, 20 + 41);
+        assert!(!run.exists());
+        assert_eq!(quarantine_info(&q)["runs"].as_array().unwrap().len(), 0);
+        let _ = std::fs::remove_dir_all(&q);
     }
 }

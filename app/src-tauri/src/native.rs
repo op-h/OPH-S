@@ -10,6 +10,7 @@ extern "C" {
     fn oph_protect(input: *const u8, len: u32, out: *mut *mut u8, out_len: *mut u32, decrypt: i32) -> i32;
     fn oph_free(p: *mut u8);
     fn oph_known_folder(which: i32, out: *mut u16, cap: i32) -> i32;
+    fn oph_delete_on_reboot(path: *const u16) -> i32;
     fn oph_volume_guid(letter: u16, out: *mut u16, cap: i32) -> i32;
 }
 
@@ -26,6 +27,21 @@ pub fn known_folder(which: i32) -> Option<std::path::PathBuf> {
     }
     let _ = which;
     None
+}
+
+/// Ask Windows to delete `path` at the next restart.
+pub fn delete_on_reboot(path: &std::path::Path) -> bool {
+    #[cfg(windows)]
+    unsafe {
+        use std::os::windows::ffi::OsStrExt;
+        let w: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+        return oph_delete_on_reboot(w.as_ptr()) == 1;
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = path;
+        false
+    }
 }
 
 /// Volume GUID path for a drive letter (Windows), e.g. `\\?\Volume{…}\`.

@@ -482,9 +482,16 @@ pub async fn cleaner_undo(core: S<'_>, req: UndoReq) -> R {
 pub async fn cleaner_purge(core: S<'_>) -> R {
     let c = core.inner().clone();
     blocking(move || {
-        let freed = crate::cleaner::purge(&c.dir.join("quarantine"), false);
-        c.sys("cleaner.run", "info", format!("Quarantine purged: {} MB freed permanently", freed / 1_048_576));
-        json!({"freed_bytes": freed})
+        let r = crate::cleaner::purge(&c.dir.join("quarantine"), false);
+        let mut msg = format!("Quarantine purged: {} files, {} MB freed permanently.", r.deleted, r.freed_bytes / 1_048_576);
+        if r.pending_reboot > 0 {
+            msg.push_str(&format!(" {} files are protected by another program while Windows runs and will be deleted at the next restart.", r.pending_reboot));
+        }
+        if r.failed > 0 {
+            msg.push_str(&format!(" {} files could not be removed.", r.failed));
+        }
+        c.sys("cleaner.run", "info", msg.clone());
+        json!({"freed_bytes": r.freed_bytes, "deleted": r.deleted, "pending_reboot": r.pending_reboot, "failed": r.failed, "message": msg})
     })
     .await
 }

@@ -85,6 +85,12 @@ int oph_known_folder(int which, wchar_t* out, int cap) {
     return ok;
 }
 
+// Delete a file at the next restart (MoveFileEx + MOVEFILE_DELAY_UNTIL_REBOOT, needs admin).
+// Used for quarantined files another program's filter driver protects while Windows runs.
+int oph_delete_on_reboot(const wchar_t* path) {
+    return MoveFileExW(path, nullptr, MOVEFILE_DELAY_UNTIL_REBOOT) ? 1 : 0;
+}
+
 // Bitmask of present drive letters (bit 0 = A:).
 unsigned int oph_logical_drives(void) {
     return (unsigned int)GetLogicalDrives();

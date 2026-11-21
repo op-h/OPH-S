@@ -150,7 +150,7 @@ pub async fn maintenance(core: Arc<Core>) {
             let _ = tokio::task::spawn_blocking(move || {
                 crate::native::background(|| {
                     let n = c.db.lock().unwrap().prune(s.retention_days, s.max_store_mb as i64 * 1_048_576).unwrap_or(0);
-                    let freed = crate::cleaner::purge(&c.dir.join("quarantine"), true);
+                    let freed = crate::cleaner::purge(&c.dir.join("quarantine"), true).freed_bytes;
                     if n > 0 || freed > 0 {
                         c.sys("cleaner.run", "info", format!("Maintenance: {n} events past retention removed, {} MB of expired quarantine purged", freed / 1_048_576));
                     }
